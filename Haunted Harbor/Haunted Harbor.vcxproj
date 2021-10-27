@@ -139,6 +139,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Background.h" />
+    <ClInclude Include="Box.h" />
+    <ClInclude Include="Bullet.h" />
+    <ClInclude Include="Combat.h" />
     <ClInclude Include="Drawable.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Haunted Harbor.h" />
@@ -147,6 +151,10 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Background.cpp" />
+    <ClCompile Include="Box.cpp" />
+    <ClCompile Include="Bullet.cpp" />
+    <ClCompile Include="Combat.cpp" />
     <ClCompile Include="Drawable.cpp" />
     <ClCompile Include="Haunted Harbor.cpp" />
     <ClCompile Include="Player.cpp" />

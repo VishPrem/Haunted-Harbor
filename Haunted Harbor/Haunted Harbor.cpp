@@ -3,11 +3,9 @@
 
 #include "framework.h"
 #include "Haunted Harbor.h"
-#include "Drawable.h"
-#include "Player.h"
-#include "Background.h"
-#include "Box.h"
-#include "Platform.h"
+#include "Game.h"
+#include "Grid.h"
+#include "Start.h"
 
 #define MAX_LOADSTRING 100
 
@@ -16,19 +14,16 @@ HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
-// GAME VARIABLES
-Player* mc = new Player(100, 100);
-Background* bg = new Background("Background3.jpg", 0, 0, 5118, 550, 0.5);
-Background* ground = new Background("Ground.bmp", 0, GROUND, 774, 128, 1.1);
-
-// GAME LISTS
-list<Box*> boxes;
-list<Platform*> platform;
-
-
 // CONTROL VARIABLES
 HDC buffer_context;
-int mpos = 0;
+int mpos = 0, plx = 0, php = 0;
+bool started = false, paused = false, lost = false;
+
+
+// GAME VARIABLES
+Start* start = new Start();
+Game* game = new Game();
+Grid* grid = new Grid(3600);
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -37,8 +32,8 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 // Custom method forward declarations
-void	setup_buffer();
-void	draw_buffer(HWND hWnd);
+void				setup_buffer();
+void				draw_buffer(HWND hWnd);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -104,7 +99,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 //   PURPOSE: Saves instance handle and creates main window
 //
-//   COMMENTS:
+//   COMMENTS: 
 //
 //        In this function, we save the instance handle in a global variable and
 //        create and display the main program window.
@@ -114,7 +109,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	hInst = hInstance; // Store instance handle in our global variable
 
 	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-		250, 250, 700, 550, nullptr, nullptr, hInstance, nullptr);
+		1920 / 2 - gsw / 2, 1080 / 2 - gsh / 2, gsw, gsh, nullptr, nullptr, hInstance, nullptr);
 
 	if (!hWnd)
 	{
@@ -123,12 +118,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 	setup_buffer();
 	SetTimer(hWnd, 1, 17, NULL);
-	//big boxes
-	for (int i = 0; i < 5; i++) boxes.add(new Box("Crate.bmp", 200 + i * 64, GROUND - 64, 64, 64));
-	//small boxes
-	for (int i = 0; i < 5; i++) boxes.add(new Box("SmallCrate.bmp", 600 + i * 32, GROUND - 32 - i * 32, 32, 32));
-	//platforms
-	platform.add(new Platform(400, 200, 3));
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
 	return TRUE;
@@ -167,70 +156,43 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	break;
 	case WM_KEYDOWN:
 	{
-		switch (wParam) {
-		case VK_LEFT:  
-			mc->xspeed = -PSPEED;
-			break;
-		case VK_RIGHT: 
-			mc->xspeed = PSPEED;
-			break;
-		case VK_DOWN: 
-			// WILL IMPLEMENT LATER
-			break;
-		case VK_UP: 
-			if(mc->grounded || mc->landed) mc->yspeed = -PSPEED * 2;
-			break;
-		case VK_SPACE:
-			mc->shooting = true;
-			break;
-		}
+		game->inputs(wParam, false);
 	}
 	break;
 	case WM_KEYUP:
 	{
-		switch (wParam) {
-		case VK_LEFT: 
-			mc->xspeed = 0;
-			break;
-		case VK_RIGHT: 
-			mc->xspeed = 0;
-			break;
-		case VK_DOWN:
-			// WILL IMPLEMENT LATER
-			break;
-		case VK_UP: 
-			// WILL IMPLEMENT LATER
-			break;
-		case VK_SPACE:
-			mc->shooting = false;
-			break;
-		}
+		game->inputs(wParam, true);
 	}
 	break;
 	case WM_MOUSEMOVE:
 	{
 		POINT p;
-		if (GetCursorPos(&p))
-			if (ScreenToClient(hWnd, &p)) {
-				//drawable->x = p.x;
-				//drawable->y = p.y;
-			}
+		if (GetCursorPos(&p)) if (!ScreenToClient(hWnd, &p)) break;
+		start->input(p.x, p.y, false);
 	}
 	break;
-	case WM_RBUTTONUP:
+	case WM_RBUTTONDOWN:
 	{
 
+	}
+	break;
+	case WM_LBUTTONDOWN:
+	{
+		POINT p;
+		if (GetCursorPos(&p)) if (!ScreenToClient(hWnd, &p)) break;
+		if (!started) started = start->input(p.x, p.y, true);
 	}
 	break;
 	case WM_LBUTTONUP:
 	{
-
+		POINT p;
+		if (GetCursorPos(&p)) if (!ScreenToClient(hWnd, &p)) break;
+		start->input(p.x, p.y, false);
 	}
 	break;
 	case WM_TIMER:
 	{
-		mc->update(boxes);
-		for (Platform* p : platform) p->update();
+		if (started) game->update();
 		//ADD ABOVE THIS LINE
 		PostMessage(hWnd, WM_PAINT, 0, 0);
 	}
@@ -240,12 +202,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hWnd, &ps);
 		// TODO: Add any drawing code that uses hdc here...
-		bg->draw(buffer_context);
-		ground->draw(buffer_context);
-		for (Box* b : boxes) b->draw(buffer_context);
-		for (Platform* p : platform) p->draw_boxes(buffer_context);
-		mc->draw(buffer_context);
-		mc->draw_bullets(buffer_context);
+		if (!started) start->render(buffer_context);
+		else game->render(buffer_context);
 		draw_buffer(hWnd);
 		EndPaint(hWnd, &ps);
 	}

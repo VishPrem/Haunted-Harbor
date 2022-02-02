@@ -1,2 +1,6 @@
-﻿  Haunted Harbor.cpp
+﻿  Game.cpp
+  Haunted Harbor.cpp
+  Player.cpp
+C:\Users\vishp\Desktop\Git\Haunted Harbor\Player.cpp(64,110): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+  Generating Code...
   Haunted Harbor.vcxproj -> C:\Users\vishp\Desktop\Git\Haunted Harbor\Debug\Haunted Harbor.exe
